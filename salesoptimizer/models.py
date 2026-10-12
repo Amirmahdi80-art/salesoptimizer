@@ -1523,6 +1523,14 @@ class AnalysisGradeOne(models.Model):
         blank=True,
         verbose_name="نام",
     )
+    all_time_sold = models.DecimalField(
+        db_column="all_time_sold",
+        max_digits=58,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="فروش کل",
+    )
 
     class Meta:
         managed = False
@@ -1615,3 +1623,144 @@ class Action(models.Model):
         db_table = "actions"
         verbose_name = "اقدام"
         verbose_name_plural = "اقدامات"
+
+
+class ProductVoucher(models.Model):
+    """
+    Voucher line item involving a product code.
+
+    direction    = INCOMING / OUTGOING
+    qty          = units moved
+    voucher_caption = free text (e.g. 'کالای جدید', 'خرید')
+    """
+
+    DIRECTION_CHOICES = [
+        ("INCOMING", "ورودی"),
+        ("OUTGOING", "خروجی"),
+    ]
+
+    id = models.AutoField(
+        primary_key=True,
+        db_column="id",
+        verbose_name="شناسه",
+    )
+    direction = models.CharField(
+        max_length=16,
+        choices=DIRECTION_CHOICES,
+        db_column="direction",
+        verbose_name="جهت",
+    )
+    inventory_voucher_id = models.BigIntegerField(
+        db_column="inventory_voucher_id",
+        verbose_name="شناسه سند انبار",
+    )
+    spec_ref = models.IntegerField(
+        null=True,
+        blank=True,
+        db_column="spec_ref",
+        verbose_name="نوع سند",
+    )
+    voucher_no = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        db_column="voucher_no",
+        verbose_name="شماره سند",
+    )
+    voucher_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_column="voucher_date",
+        verbose_name="تاریخ سند",
+    )
+    source_store_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        db_column="source_store_id",
+        verbose_name="شناسه فروشگاه مبدأ",
+    )
+    source_store = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        db_column="source_store",
+        verbose_name="فروشگاه مبدأ",
+    )
+    dest_store_id = models.BigIntegerField(
+        null=True,
+        blank=True,
+        db_column="dest_store_id",
+        verbose_name="شناسه فروشگاه مقصد",
+    )
+    dest_store = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        db_column="dest_store",
+        verbose_name="فروشگاه مقصد",
+    )
+    part_code = models.CharField(
+        max_length=128,
+        db_column="part_code",
+        verbose_name="کد کالا",
+    )
+    part_name = models.CharField(
+        max_length=512,
+        null=True,
+        blank=True,
+        db_column="part_name",
+        verbose_name="نام کالا",
+    )
+    qty = models.DecimalField(
+        max_digits=28,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        db_column="qty",
+        verbose_name="مقدار",
+    )
+    voucher_caption = models.CharField(
+        max_length=1024,
+        null=True,
+        blank=True,
+        db_column="voucher_caption",
+        verbose_name="شرح سند",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_column="created_at",
+        verbose_name="تاریخ ایجاد",
+    )
+
+    class Meta:
+        db_table            = "product_voucher"
+        managed             = False
+        verbose_name        = "سند کالا"
+        verbose_name_plural = "اسناد کالا"
+        ordering            = ["-voucher_date", "-id"]
+
+        indexes = [
+            models.Index(fields=["part_code"],           name="idx_part_code"),
+            models.Index(fields=["inventory_voucher_id"], name="idx_voucher_id"),
+            models.Index(fields=["direction"],           name="idx_direction"),
+            models.Index(fields=["spec_ref"],            name="idx_spec_ref"),
+            models.Index(fields=["source_store_id"],     name="idx_source_store"),
+            models.Index(fields=["dest_store_id"],       name="idx_dest_store"),
+            models.Index(fields=["voucher_date"],        name="idx_voucher_date"),
+            models.Index(fields=["part_code", "direction"], name="idx_part_direction"),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"{self.direction} | {self.voucher_no} | "
+            f"{self.part_code} | qty={self.qty}"
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"<ProductVoucher("
+            f"id={self.id}, "
+            f"direction={self.direction!r}, "
+            f"part_code={self.part_code!r}, "
+            f"qty={self.qty})>"
+        )

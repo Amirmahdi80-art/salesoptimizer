@@ -75,7 +75,6 @@ QUERY = text(f"""
     WHERE   v.InventoryVoucherSpecificationRef = 68
     AND   src.StoreID IN (6, 2)
     AND dst.StoreID IN (17, 5, 13, 18, 16, 3, 10, 15)
-    AND p.Code like '2034517902%'
     ORDER BY v.InventoryVoucherID DESC, vi.RowNumber
 """)
 

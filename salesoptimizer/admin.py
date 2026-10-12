@@ -13,6 +13,7 @@ from .models import (
     TwelveMonthAnalysisStore,
     AnalysisGradeOne,
     Action,
+    ProductVoucher
 )
 
 
@@ -235,3 +236,24 @@ class ActionAdmin(admin.ModelAdmin):
         ),
         ("سایر", {"fields": ("created_by", "notes")}),
     )
+
+
+@admin.register(ProductVoucher)
+class ProductVoucherAdmin(admin.ModelAdmin):
+    list_display  = (
+        "id",
+        "direction",
+        "voucher_no",
+        "voucher_date",
+        "part_code",
+        "part_name",
+        "source_store",
+        "dest_store",
+        "qty",
+        "spec_ref",
+    )
+    list_filter   = ("direction", "spec_ref", "source_store", "dest_store")
+    search_fields = ("part_code", "part_name", "voucher_no", "voucher_caption")
+    ordering      = ("-voucher_date", "-id")
+    readonly_fields = ("created_at",)
+    date_hierarchy = "voucher_date"

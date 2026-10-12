@@ -14,6 +14,10 @@ Run the following scripts one by one on a regular basis (cron jobs):
 6. soft_sql_five.sql
 7. analysis.sql
 8. best.py 
+run this: SET GLOBAL local_infile = 1; once on MySQL
+9. populate_product_voucher_fast.py
+10. product_all_time_sold.py
+11. all_time_sold.sql
 
 
 
@@ -21,4 +25,4 @@ We run these only once:
 1. add_averages.py
 2. add_categories.py
 3. add_colors.py
-.
+

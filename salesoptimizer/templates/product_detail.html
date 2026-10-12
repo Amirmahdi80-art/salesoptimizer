@@ -2,7 +2,7 @@
 {% load static %}
 
 {% block title %}{{ product.product_code }} — پروفایل محصول{% endblock %}
-
+{% load jalali %}
 {% block content %}
 <style>
 /* ============================================================
@@ -793,6 +793,129 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
 }
+
+/* ───────────────────────────────────────────── */
+/* Row colors by direction                       */
+/* ───────────────────────────────────────────── */
+
+/* INCOMING = light green */
+.stores-table tbody tr.row-incoming {
+    background-color: #e8f5e9;   /* light green */
+}
+
+.stores-table tbody tr.row-incoming:hover {
+    background-color: #d4edda;   /* slightly darker on hover */
+}
+
+/* OUTGOING = light red */
+.stores-table tbody tr.row-outgoing {
+    background-color: #ffebee;   /* light red */
+}
+
+.stores-table tbody tr.row-outgoing:hover {
+    background-color: #fdd8dc;   /* slightly darker on hover */
+}
+
+/* ───────────────────────────────────────────── */
+/* Direction badges                              */
+/* ───────────────────────────────────────────── */
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.badge-incoming {
+    background-color: #2e7d32;   /* dark green */
+    color: #fff;
+}
+
+.badge-outgoing {
+    background-color: #c62828;   /* dark red */
+    color: #fff;
+}
+
+/* ───────────────────────────────────────────── */
+/* Caption cell — keep it compact                */
+/* ───────────────────────────────────────────── */
+.caption-cell {
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+}
+
+h2 {
+    margin: 10px;
+}
+
+p {
+    margin: 10px;
+}
+
+.muted {
+    margin: 10px;
+}
+
+.invoice-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.invoice-table thead th {
+    position: sticky;
+    top: 0;
+    background: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+    padding: 10px 8px;
+    text-align: right;
+    font-weight: 600;
+    white-space: nowrap;
+    z-index: 1;
+}
+
+.invoice-table tbody td {
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.invoice-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Number columns aligned left for readability */
+.invoice-table tbody td:nth-child(13),   /* major_unit_quantity */
+.invoice-table tbody td:nth-child(15),   /* price */
+.invoice-table tbody td:nth-child(16),   /* reduction_amount */
+.invoice-table tbody td:nth-child(17),   /* addition_amount */
+.invoice-table tbody td:nth-child(18) {  /* net_price */
+    text-align: left;
+    font-family: monospace;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.muted {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.state {
+    text-align: center;
+    padding: 24px;
+    color: #888;
+    font-style: italic;
+}
 </style>
 <div class="product-page" dir="rtl">
 
@@ -832,7 +955,7 @@
                     <span class="meta-divider"></span>
                     <span class="meta-item">
                         <span class="meta-label">اولین نمایش</span>
-                        <span class="meta-value code">{{ product.first_show_date|date:"Y-m-d" }}</span>
+                        <span class="meta-value code">{{ product.first_show_date|jalali }}</span>
                     </span>
                 </div>
             </div>
@@ -867,6 +990,11 @@
     <!-- ============ KPI ROW ============ -->
     <section class="stats-strip">
         <div class="stats-primary">
+            <div class="stat">
+                <span class="stat-label">فروش  کل</span>
+                <span class="stat-value">{{ analysis.all_time_sold|floatformat:0 }}</span>
+                <span class="stat-unit">عدد</span>
+            </div>
             <div class="stat">
                 <span class="stat-label">فروش ۱۲ ماهه</span>
                 <span class="stat-value">{{ product.total_sold_12_months|floatformat:0 }}</span>
@@ -967,7 +1095,6 @@
                         <th>#</th>
                         <th>نام فروشگاه</th>
                         <th>فروش ۱۲ ماهه</th>
-                        <th>موجودی</th>
                         <th>سن (ماه)</th>
                         <th>درصد تخفیف</th>
                         <th>وضعیت</th>
@@ -979,7 +1106,6 @@
                             <td class="muted">{{ forloop.counter }}</td>
                             <td>{{ s.name }}</td>
                             <td class="num">{{ s.total_sold_12_months|floatformat:0 }}</td>
-                            <td class="num">{{ s.total_inventory|floatformat:0 }}</td>
                             <td class="num">{{ s.age_in_months }}</td>
                             <td class="num">{% if s.discount_percentage %}{{ s.discount_percentage|floatformat:1 }}٪{% else %}0٪{% endif %}</td>
                             <td>
@@ -1115,7 +1241,147 @@
             </div>
         </div>
     </section>
+
+    <!-- ============ VOUCHERS TABLE ============ -->
+    <section class="card">
+        <div class="card-header">
+            <h2>حواله ها</h2>
+            <p>برای تحلیل گردش محصول و بدست آوردن موجودی اولیه برای هر محصول می‌توانید از هوش مصنوعی کمک بگیرید</p>
+            <span class="muted">{{ vouchers|length }} حواله</span>
+        </div>
+
+        <div class="table-scroll">
+            <table class="stores-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>شناسه سند انبار</th>
+                        <th>نوع سند</th>
+                        <th>شماره سند</th>
+                        <th>تاریخ سند</th>
+                        <th>شناسه فروشگاه مبدأ</th>
+                        <th>فروشگاه مبدأ</th>
+                        <th>شناسه فروشگاه مقصد</th>
+                        <th>فروشگاه مقصد</th>
+                        <th>کد کالا</th>
+                        <th>نام کالا</th>
+                        <th>تعداد</th>
+                        <th>شرح</th>
+                        <th>جهت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for v in vouchers %}
+                        <tr class="row-{{ v.direction|lower }}">
+                            <td class="muted">{{ forloop.counter }}</td>
+                            <td>{{ v.inventory_voucher_id }}</td>
+                            <td>{{ v.spec_ref|default:"—" }}</td>
+                            <td>{{ v.voucher_no|default:"—" }}</td>
+                            <td>
+                                {% if v.voucher_date %}
+                                    {{ v.voucher_date|jalali }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>{{ v.source_store_id|default:"—" }}</td>
+                            <td>{{ v.source_store|default:"—" }}</td>
+                            <td>{{ v.dest_store_id|default:"—" }}</td>
+                            <td>{{ v.dest_store|default:"—" }}</td>
+                            <td>{{ v.part_code }}</td>
+                            <td>{{ v.part_name|default:"—" }}</td>
+                            <td>{{ v.qty|floatformat:0 }}</td>
+                            <td class="caption-cell" title="{{ v.voucher_caption }}">
+                                {{ v.voucher_caption|default:"—"|truncatechars:60 }}
+                            </td>
+                            <td>
+                                {% if v.direction == "INCOMING" %}
+                                    <span class="badge badge-incoming">ورودی</span>
+                                {% elif v.direction == "OUTGOING" %}
+                                    <span class="badge badge-outgoing">خروجی</span>
+                                {% else %}
+                                    {{ v.direction }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="14" class="state">هیچ حواله‌ای یافت نشد</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
     
+    <section class="card">
+        <div class="card-header">
+            <h2>فاکتورها</h2>
+            <p>لیست تمام ردیف‌های فاکتور به همراه اطلاعات مشتری، کالا و مبالغ</p>
+            <span class="muted">{{ invoices|length }} فاکتور</span>
+        </div>
+
+        <div class="table-scroll">
+            <table class="invoice-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>شناسه آیتم فاکتور</th>
+                        <th>شناسه طرف حساب</th>
+                        <th>نام کامل</th>
+                        <th>شناسه دفتر فروش</th>
+                        <th>نام</th>
+                        <th>شناسه فاکتور</th>
+                        <th>شماره</th>
+                        <th>تاریخ</th>
+                        <th>شناسه قطعه</th>
+                        <th>کد</th>
+                        <th>نام کالا</th>
+                        <th>مقدار واحد اصلی</th>
+                        <th>موبایل</th>
+                        <th>قیمت</th>
+                        <th>مبلغ کاهش</th>
+                        <th>مبلغ افزایش</th>
+                        <th>قیمت خالص</th>
+                        <th>نام</th>
+                        <th>نام خانوادگی</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in invoices %}
+                        <tr>
+                            <td class="muted">{{ forloop.counter }}</td>
+                            <td>{{ item.invoice_item_id }}</td>
+                            <td>{{ item.party_id }}</td>
+                            <td>{{ item.full_name|default:"—" }}</td>
+                            <td>{{ item.sales_office_id }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.invoice_id }}</td>
+                            <td>{{ item.number }}</td>
+                            <td>{{ item.expr2|jalali_fa:"datetime" }}</td>
+                            <td>{{ item.part_id }}</td>
+                            <td>{{ item.code }}</td>
+                            <td>{{ item.expr1 }}</td>
+                            <td>{{ item.major_unit_quantity|floatformat:2 }}</td>
+                            <td>{{ item.mobile|default:"—" }}</td>
+                            <td>{{ item.price|floatformat:2|default:"—" }}</td>
+                            <td>{{ item.reduction_amount|floatformat:2|default:"—" }}</td>
+                            <td>{{ item.addition_amount|floatformat:2|default:"—" }}</td>
+                            <td>{{ item.net_price|floatformat:2|default:"—" }}</td>
+                            <td>{{ item.first_name|default:"—" }}</td>
+                            <td>{{ item.last_name|default:"—" }}</td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="20" class="state">هیچ آیتم فاکتوری یافت نشد</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    
+
     <!-- ============ AI FAB ============ -->
     <button id="ai-fab" class="ai-fab" type="button" aria-label="باز کردن دستیار">
         <svg id="ai-fab-icon-open" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1169,6 +1435,7 @@
 <!-- ============ AI DATA ============ -->
 {{ product_data|json_script:"product-data" }}
 {{ stores_data|json_script:"stores-data" }}
+{{ vouchers_data|json_script:"vouchers-data" }}
 
 <!-- ============ HIGHCHARTS ============ -->
 <script src="{% static './js/highcharts.js' %}"></script>
@@ -1299,9 +1566,11 @@
     // ---------- load data from the blobs ----------
     let product = null;
     let stores = [];
+    let vouchers = [];
     try {
         product = JSON.parse(document.getElementById('product-data').textContent);
         stores  = JSON.parse(document.getElementById('stores-data').textContent);
+        vouchers = JSON.parse(document.getElementById('vouchers-data').textContent);
     } catch (e) {
         console.error('Failed to load product/store blobs:', e);
     }
@@ -1326,18 +1595,49 @@
 
     // ---------- default prompt ----------
     const DEFAULT_PROMPT = [
-        'تو یک تحلیل‌گر موجودی و فروش فروشگاهی هستی. یک آرایه JSON شامل یک محصول و تمام فروشگاه‌هایی که آن محصول را می‌فروشند به تو داده می‌شود.',
+        'تو یک تحلیل‌گر موجودی و فروش فروشگاهی هستی. یک آرایه JSON شامل یک محصول، تمام فروشگاه‌هایی که آن محصول را می‌فروشند، و تمام حواله‌های (ووچرهای) مرتبط با آن محصول به تو داده می‌شود.',
+
+        '─── راهنمای فیلدها ───',
         'ستون total_sold_12_months مجموع فروش ۱۲ ماه گذشته در آن فروشگاه است.',
         'ستون best_store نشان می‌دهد که این فروشگاه بهترین فروشنده آن محصول بوده است یا نه.',
-        '',
-        'وظیفه تو تحلیل تفاوت‌های فروش بین فروشگاه‌های این محصول است. مشخصاً:',
-        '',
+        'ستون vouchers شامل تمام حواله‌های مرتبط با این محصول است. هر حواله شامل این فیلدهاست:',
+        '  • direction: جهت حواله — مقادیر ممکن: INCOMING (ورودی) یا OUTGOING (خروجی)',
+        '  • spec_ref: نوع سند انبار. کد 68 به معنای انتقال بین فروشگاهی است.',
+        '  • source_store: فروشگاه مبدأ (فرستنده)',
+        '  • dest_store: فروشگاه مقصد (گیرنده)',
+        '  • qty: تعداد جابجا شده در آن حواله',
+        '  • voucher_date: تاریخ حواله',
+
+        '─── وظیفه اصلی ───',
+        'وظیفه تو تحلیل تفاوت‌های فروش بین فروشگاه‌های این محصول و همچنین تحلیل موجودی توزیع‌شده آن بر اساس حواله‌ها است. مشخصاً:',
+
+        '─── بخش ۱: تحلیل فروش ───',
         '۱) فروش تمام فروشگاه‌های این محصول را با هم مقایسه کن.',
         '۲) اگر فروش بهترین فروشگاه فقط ۱ یا ۲ عدد بیشتر از فروشگاه دوم است، بگو انتقال موجودی به بهترین فروشگاه توجیه منطقی ندارد.',
         '۳) اگر total_sold_12_months برابر ۱ یا ۲ است، بگو تصمیم‌گیری درباره بهترین فروشگاه معنادار نیست.',
-        '۴) در پایان، یک جمع‌بندی کوتاه بده: آیا این محصول واقعاً فروشگاه برتر مشخص دارد یا به دلیل اختلاف کم یا فروش ناچیز قابل تصمیم‌گیری نیست.',
-        '',
-        'داده‌ها را بازمحاسبه نکن و قانون جدید نساز. پاسخ را کاملاً به فارسی بده.',
+
+        '─── بخش ۲: تحلیل موجودی بر اساس حواله‌ها ───',
+        '۴) تنها حواله‌هایی را در نظر بگیر که spec_ref آنها برابر 68 است. این حواله‌ها نشان‌دهنده انتقال کالا بین فروشگاه‌ها هستند.',
+        '۵) تنها حواله‌هایی معتبر هستند که فروشگاه مبدأ (source_store) آنها «آماده فروش اینترنتی» باشد. حواله‌هایی که از این مبدأ ارسال نشده‌اند را نادیده بگیر.',
+        '۶) برای هر فروشگاه مقصد (dest_store)، مجموع تعداد (qty) حواله‌های ورودی از مبدأ «آماده فروش اینترنتی» را محاسبه کن. این عدد نشان‌دهنده موجودی ارسال‌شده به آن فروشگاه است.',
+        '۷) مجموع تمام این مقادیر را به عنوان «موجودی کل محصول» در نظر بگیر.',
+        '۸) در گزارش خود، برای هر فروشگاه مقصد این موارد را بیاور:',
+        '   • نام فروشگاه مقصد',
+        '   • مجموع تعداد دریافتی از «آماده فروش اینترنتی»',
+        '   • سهم آن فروشگاه از موجودی کل (به درصد)',
+        '   • وضعیت فروش آن فروشگاه (از داده‌های فروش)',
+
+        '─── بخش ۳: جمع‌بندی ───',
+        '۹) در پایان، یک جمع‌بندی کوتاه بده که شامل این موارد باشد:',
+        '   • آیا این محصول واقعاً فروشگاه برتر مشخص دارد یا به دلیل اختلاف کم یا فروش ناچیز قابل تصمیم‌گیری نیست؟',
+        '   • موجودی کل محصول چقدر است و چگونه بین فروشگاه‌ها توزیع شده است؟',
+        '   • آیا توزیع موجودی با عملکرد فروش فروشگاه‌ها همخوانی دارد؟ (مثلاً موجودی زیاد در فروشگاهی با فروش کم را علامت بزن)',
+        '   • اگر تناسبی بین موجودی و فروش وجود ندارد، چه انتقال‌هایی پیشنهاد می‌کنی؟',
+
+        '─── قواعد مهم ───',
+        'داده‌ها را بازمحاسبه نکن و قانون جدید نساز. از قوانین تعریف‌شده در بالا پیروی کن. اگر داده‌ای برای تحلیل کافی نیست، صریحاً بگو.',
+        'پاسخ را کاملاً به فارسی بده و از جداول یا لیست‌های خوانا استفاده کن.',
+        'html نده'
     ].join('\n');
 
     // ---------- UI helpers ----------
@@ -1439,7 +1739,24 @@
             best_store: s.best_store,
         }));
 
-        return productPayload ? [productPayload, ...storesPayload] : storesPayload;
+        const vouchersPayload = (vouchers || []).map(v => ({
+            direction:         v.direction,           // INCOMING / OUTGOING
+            spec_ref:          v.spec_ref,            // 68 = transfer between stores
+            voucher_no:        v.voucher_no,
+            voucher_date:      v.voucher_date,
+            source_store_id:   v.source_store_id,
+            source_store:      v.source_store,        // "آماده فروش اینترنتی" filter here
+            dest_store_id:     v.dest_store_id,
+            dest_store:        v.dest_store,
+            part_code:         v.part_code,
+            part_name:         v.part_name,
+            qty:               v.qty,
+            voucher_caption:   v.voucher_caption,
+        }));
+
+        return productPayload 
+        ? [productPayload, ...storesPayload, ...vouchersPayload]
+        : [...storesPayload, ...vouchersPayload];
     }
 
     // ---------- typewriter ----------

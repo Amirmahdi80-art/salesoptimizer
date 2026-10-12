@@ -9,6 +9,8 @@ from .models import (
     TwelveMonthAnalysis,
     TwelveMonthAnalysisStore,
     Action,
+    ProductVoucher,
+    InvoiceItems
 )
 from .serializers import (
     TwelveMonthAnalysisSerializer,
@@ -212,6 +214,10 @@ def ai_analyze(request):
 def product_detail_page(request, product_code):
     product = get_object_or_404(TwelveMonthAnalysis, product_code=product_code)
 
+    vouchers = ProductVoucher.objects.filter(part_code__icontains=product_code).order_by("-voucher_date")
+
+    invoices = InvoiceItems.objects.filter(code__icontains=product_code).order_by("-expr2")
+
     stores = TwelveMonthAnalysisStore.objects.filter(
         product_code=product_code
     ).order_by("-total_sold_12_months")
@@ -266,6 +272,25 @@ def product_detail_page(request, product_code):
         ),
     }
 
+    vouchers_data = [
+        {
+            "direction":            v.direction,
+            "inventory_voucher_id": v.inventory_voucher_id,
+            "spec_ref":             v.spec_ref,
+            "voucher_no":           v.voucher_no,
+            "voucher_date":         v.voucher_date.isoformat() if v.voucher_date else None,
+            "source_store_id":      v.source_store_id,
+            "source_store":         v.source_store,
+            "dest_store_id":        v.dest_store_id,
+            "dest_store":           v.dest_store,
+            "part_code":            v.part_code,
+            "part_name":            v.part_name,
+            "qty":                  float(v.qty or 0),
+            "voucher_caption":      v.voucher_caption or "",
+        }
+        for v in vouchers
+    ]
+
     stores_data = [
         {
             "sales_office_id": s.sales_office_id,
@@ -288,6 +313,9 @@ def product_detail_page(request, product_code):
         "monthly_pct": monthly_pct,
         "stores_data": stores_data,
         "product_data": product_data,
+        "vouchers": vouchers,
+        "invoices": invoices,
+        "vouchers_data": vouchers_data
     }
     return render(request, "product_detail.html", context)
 
