@@ -18,8 +18,9 @@ run this: SET GLOBAL local_infile = 1; once on MySQL
 9. populate_product_voucher_fast.py
 10. product_all_time_sold.py
 11. all_time_sold.sql
-
-
+12. soft_sql_seven.sql
+13. populate_product_supplier.py
+14. add_supplier_to_analysis.sql
 
 We run these only once:
 1. add_averages.py

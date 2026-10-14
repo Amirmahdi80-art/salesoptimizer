@@ -159,6 +159,10 @@ class AnalysisGradeOneViewSet(ProductFilterMixin, viewsets.ModelViewSet):
         if category:
             category = qs.filter(name=category)
 
+        sp = p.get("supplier")
+        if sp:
+            qs = qs.filter(supplier=sp)
+
         return qs
 
 

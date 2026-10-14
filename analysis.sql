@@ -287,14 +287,14 @@ metrics AS (
             THEN c.current_velocity / c.benchmark_current_month_qty
             ELSE NULL
         END AS rvr,
-
+        -- This part can be editted
         CASE
             WHEN c.age_in_months < 2 THEN 'داده_ناکافی'
             WHEN c.current_velocity > c.prior_velocity * 1.10 THEN 'شتاب‌گیرنده'
             WHEN c.current_velocity < c.prior_velocity * 0.90 THEN 'نزولی'
             ELSE 'ثابت'
         END AS vt,
-
+        -- End
         (c.discount_percentage - c.avg_discount_percentage) AS dd,
 
         CASE
@@ -313,17 +313,17 @@ metrics AS (
             WHEN c.total_inventory > 0 AND c.total_inventory - c.total_sold <= 0 THEN 1
             ELSE 0
         END AS completed,
-
+        -- This part can be editted
         CASE
             WHEN c.discount_percentage - c.avg_discount_percentage <= 0 THEN 'طبیعی'
             WHEN c.discount_percentage - c.avg_discount_percentage <= 10 THEN 'حمایت‌شده'
             WHEN c.discount_percentage - c.avg_discount_percentage <= 25 THEN 'وابسته'
             ELSE 'در_فشار'
         END AS discount_quality
-
+        -- End
     FROM combined c
 ),
-
+-- This part can be editted
 tagged AS (
     SELECT
         m.*,
@@ -394,7 +394,7 @@ tagged AS (
 
     FROM metrics m
 ),
-
+-- End
 action_rollup AS (
     SELECT
         a.product_code,

@@ -1,5 +1,6 @@
 from django.db import models
 
+# Remove the managed=True upon creation
 
 class CategoryContrAvgs(models.Model):
     category_name = models.CharField(
@@ -1531,6 +1532,13 @@ class AnalysisGradeOne(models.Model):
         blank=True,
         verbose_name="فروش کل",
     )
+    supplier = models.CharField(
+        db_column="supplier",
+        max_length=225,
+        null=True,
+        blank=True,
+        verbose_name="تامین کننده"
+    )
 
     class Meta:
         managed = False
@@ -1763,4 +1771,69 @@ class ProductVoucher(models.Model):
             f"direction={self.direction!r}, "
             f"part_code={self.part_code!r}, "
             f"qty={self.qty})>"
+        )
+
+
+class ProductSupplier(models.Model):
+    """
+    Supplier for a product code.
+
+    product_code = parent product code (last 2 digits stripped)
+    supplier     = supplier name (from vi.Additional1 / tamin)
+    """
+
+    id = models.AutoField(
+        primary_key=True,
+        db_column="id",
+        verbose_name="شناسه",
+    )
+    product_code = models.CharField(
+        max_length=128,
+        db_column="product_code",
+        verbose_name="کد محصول",
+    )
+    supplier = models.CharField(
+        max_length=256,
+        db_column="supplier",
+        verbose_name="تامین‌کننده",
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_column="created_at",
+        verbose_name="تاریخ ایجاد",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        db_column="updated_at",
+        verbose_name="تاریخ بروزرسانی",
+    )
+
+    class Meta:
+        db_table            = "product_supplier"
+        managed             = False      
+        verbose_name        = "تامین‌کننده محصول"
+        verbose_name_plural = "تامین‌کنندگان محصول"
+        ordering            = ["product_code", "supplier"]
+
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product_code", "supplier"],
+                name="uq_product_supplier",
+            ),
+        ]
+
+        indexes = [
+            models.Index(fields=["product_code"], name="idx_product_code"),
+            models.Index(fields=["supplier"],     name="idx_supplier"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.product_code} → {self.supplier}"
+
+    def __repr__(self) -> str:
+        return (
+            f"<ProductSupplier("
+            f"id={self.id}, "
+            f"product_code={self.product_code!r}, "
+            f"supplier={self.supplier!r})>"
         )
