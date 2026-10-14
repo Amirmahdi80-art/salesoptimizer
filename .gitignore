@@ -43,3 +43,12 @@ htmlcov/
 build/
 dist/
 *.egg-info/
+
+# Large data files
+*.csv
+product_voucher.csv
+*.xlsx
+*.xls
+
+# But keep this CSV if you track it
+!small_reference.csv
