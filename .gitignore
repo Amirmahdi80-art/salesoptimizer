@@ -51,4 +51,5 @@ product_voucher.csv
 *.xls
 
 # But keep this CSV if you track it
-!small_reference.csv
+!small_reference.csv*.csv
+product_voucher.csv
