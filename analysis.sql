@@ -288,12 +288,7 @@ metrics AS (
             ELSE NULL
         END AS rvr,
         -- This part can be editted
-        CASE
-            WHEN c.age_in_months < 2 THEN 'داده_ناکافی'
-            WHEN c.current_velocity > c.prior_velocity * 1.10 THEN 'شتاب‌گیرنده'
-            WHEN c.current_velocity < c.prior_velocity * 0.90 THEN 'نزولی'
-            ELSE 'ثابت'
-        END AS vt,
+        @@vt@@
         -- End
         (c.discount_percentage - c.avg_discount_percentage) AS dd,
 
@@ -314,86 +309,12 @@ metrics AS (
             ELSE 0
         END AS completed,
         -- This part can be editted
-        CASE
-            WHEN c.discount_percentage - c.avg_discount_percentage <= 0 THEN 'طبیعی'
-            WHEN c.discount_percentage - c.avg_discount_percentage <= 10 THEN 'حمایت‌شده'
-            WHEN c.discount_percentage - c.avg_discount_percentage <= 25 THEN 'وابسته'
-            ELSE 'در_فشار'
-        END AS discount_quality
+        @@discount_quality@@
         -- End
     FROM combined c
 ),
 -- This part can be editted
-tagged AS (
-    SELECT
-        m.*,
-
-        CASE
-            WHEN m.age_in_months > 6 AND m.completed = 1 THEN 'موجودی_مرده_کامل'
-            WHEN m.age_in_months > 6 AND m.completed = 0 THEN 'موجودی_مرده_مانده'
-            WHEN m.age_in_months <= 6 AND m.completed = 1 THEN 'زود_تمام_شده'
-            -- باز تر کردن متوسط نه صفر
-            WHEN m.age_in_months >= 2
-                 AND m.current_velocity = 0
-                 AND m.prior_velocity = 0
-                 AND m.cumulative_sell_through < 50 THEN 'متوقف_شده'
-
-
-            WHEN m.rstr IS NOT NULL AND m.rstr >= 1.30
-                 AND m.cdr IS NOT NULL AND m.cdr >= 0.80
-                 AND m.discount_quality IN ('طبیعی', 'حمایت‌شده') THEN 'قوی'
-
-            WHEN m.velocity_gap IS NOT NULL AND m.velocity_gap < 0.50
-                 AND m.age_in_months >= 4 THEN 'خطر'
-
-            WHEN m.rstr IS NOT NULL AND m.rstr >= 0.90
-                 AND m.velocity_gap IS NOT NULL AND m.velocity_gap >= 1.0 THEN 'سلامت'
-
-            WHEN m.rstr IS NOT NULL AND m.rstr < 0.90
-                 AND m.age_in_months <= 5 THEN 'ضعیف'
-
-            ELSE 'na'
-        END AS status_tag,
-
-        CASE
-            WHEN m.age_in_months > 6 AND m.completed = 1 THEN 'آرشیو'
-            WHEN m.age_in_months > 6 AND m.completed = 0 AND m.discount_quality = 'در_فشار' THEN 'حذف'
-            WHEN m.age_in_months > 6 AND m.completed = 0 THEN 'پایان_فصل'
-
-            WHEN m.age_in_months <= 6 AND m.completed = 1
-                 AND m.rstr >= 1.30
-                 AND m.cdr >= 0.80
-                 AND m.discount_quality IN ('طبیعی', 'وابسته') THEN 'خرید'
-
-            WHEN m.age_in_months <= 6 AND m.completed = 1 THEN 'تحقیق'
-
-            WHEN m.age_in_months >= 2
-                 AND m.current_velocity = 0
-                 AND m.prior_velocity = 0 THEN 'تخفیف_50'
-
-            WHEN m.rstr >= 1.30
-                 AND m.cdr >= 0.80
-                 AND m.discount_quality IN ('طبیعی', 'وابسته')
-                 AND m.velocity_gap IS NOT NULL
-                 AND m.velocity_gap >= 1.0 THEN 'خرید'
-
-            WHEN m.rstr >= 1.30
-                 AND m.cdr >= 0.80
-                 AND m.discount_quality IN ('طبیعی', 'حمایت‌شده') THEN 'کنترل'
-
-            WHEN m.velocity_gap IS NOT NULL AND m.velocity_gap < 0.50
-                 AND m.age_in_months >= 4 THEN 'تخفیف_30'
-
-            WHEN m.rstr >= 0.90
-                 AND m.velocity_gap >= 1.0 THEN 'کنترل'
-
-            WHEN m.rstr < 0.90 THEN 'تخفیف_20'
-
-            ELSE 'کنترل'
-        END AS action
-
-    FROM metrics m
-),
+@@tag@@
 -- End
 action_rollup AS (
     SELECT
@@ -434,59 +355,9 @@ current_active AS (
     WHERE a.action_start_date <= CURDATE()
       AND (a.action_end_date IS NULL OR a.action_end_date >= CURDATE())
 )
-
-SELECT
-    t.*,
-    pc.category_name AS name,
-    -- Currently active action
-    ca.action_type            AS active_action,
-    ca.action_start_date      AS active_action_start_date,
-    ca.action_end_date        AS active_action_end_date,
-
-    -- Action history
-    COALESCE(ar.action_count_total,    0) AS action_count_total,
-    COALESCE(ar.action_count_measured, 0) AS action_count_measured,
-    lc.action_type            AS last_action,
-    lc.action_verdict         AS last_action_verdict,
-    lc.action_lift            AS last_action_lift,
-    lc.action_margin_impact   AS last_action_margin_impact,
-
-    -- Ladder state (case framework)
-    CASE
-        WHEN t.status_tag = 'موجودی_مرده_کامل'  THEN 2
-        WHEN t.status_tag = 'موجودی_مرده_مانده' THEN 3
-        ELSE 0
-    END AS actions_remaining,
-
-    -- Next recommended action
-    CASE
-        -- No actions allowed → nothing to recommend
-        WHEN t.status_tag NOT IN ('موجودی_مرده_کامل','موجودی_مرده_مانده')
-            THEN NULL
-
-        -- Already have an active action → don't recommend another
-        WHEN ca.action_type IS NOT NULL THEN NULL
-
-        -- No actions yet → recommend the baseline action from the analysis
-        WHEN COALESCE(ar.action_count_total, 0) = 0 THEN t.action
-
-        -- Last action was effective → repeat it
-        WHEN lc.action_verdict = 'موثر' THEN lc.action_type
-
-        -- Last action was ineffective → escalate
-        WHEN lc.action_verdict = 'فاقد_تاثیر' AND lc.action_type = 'تخفیف_20' THEN 'تخفیف_30'
-        WHEN lc.action_verdict = 'فاقد_تاثیر' AND lc.action_type = 'تخفیف_30' THEN 'تخفیف_50'
-        WHEN lc.action_verdict = 'فاقد_تاثیر' THEN 'حذف'
-
-        -- Ambiguous → try the analysis's own suggestion, unless we've already tried it
-        WHEN lc.action_verdict = 'مبهم' AND lc.action_type <> t.action THEN t.action
-        WHEN lc.action_verdict = 'مبهم' THEN 'کنترل'
-
-        -- Fallback
-        ELSE t.action
-    END AS next_recommended_action
-
-FROM tagged t
+-- this part can be edited
+@@action@@
+-- End
 LEFT JOIN salesoptimizer.product_categories pc ON pc.category_code = t.category_code
 LEFT JOIN action_rollup   ar ON ar.product_code = t.product_code
 LEFT JOIN last_completed  lc ON lc.product_code = t.product_code AND lc.rn = 1

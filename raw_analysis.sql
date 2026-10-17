@@ -1,4 +1,8 @@
-create table salesoptimizer.first_analysis as
+-- run this in powershell: & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" --default-character-set=utf8mb4 -u root -p salesoptimizer -e "source C:/projects/project-1.0.0/salesop/analysis.sql"
+
+DROP TABLE IF EXISTS salesoptimizer.analysis_grade_one;
+
+CREATE TABLE salesoptimizer.analysis_grade_one AS
 WITH product_signals AS (
     SELECT
         p.product_code,
@@ -8,9 +12,10 @@ WITH product_signals AS (
         p.age_in_months,
         p.age_in_days,
         p.discount_percentage,
+        p.total_sold,
         p.total_sold_12_months,
 
-        (p.total_inventory - p.total_sold_12_months) AS remaining_inventory,
+        (p.total_inventory - p.total_sold) AS remaining_inventory,
         GREATEST(6 - p.age_in_months, 0) AS remaining_months,
 
         CASE
@@ -282,14 +287,14 @@ metrics AS (
             THEN c.current_velocity / c.benchmark_current_month_qty
             ELSE NULL
         END AS rvr,
-
+        -- This part can be editted
         CASE
-            WHEN c.age_in_months < 2 THEN 'INSUFFICIENT_DATA'
-            WHEN c.current_velocity > c.prior_velocity * 1.10 THEN 'ACCELERATING'
-            WHEN c.current_velocity < c.prior_velocity * 0.90 THEN 'DECLINING'
-            ELSE 'STABLE'
+            WHEN c.age_in_months < 2 THEN 'داده_ناکافی'
+            WHEN c.current_velocity > c.prior_velocity * 1.10 THEN 'شتاب‌گیرنده'
+            WHEN c.current_velocity < c.prior_velocity * 0.90 THEN 'نزولی'
+            ELSE 'ثابت'
         END AS vt,
-
+        -- End
         (c.discount_percentage - c.avg_discount_percentage) AS dd,
 
         CASE
@@ -302,95 +307,215 @@ metrics AS (
             WHEN c.remaining_months > 0 AND c.remaining_inventory > 0
             THEN c.current_velocity / (c.remaining_inventory / c.remaining_months)
             ELSE NULL
-        END AS velocity_gap
+        END AS velocity_gap,
 
+        CASE
+            WHEN c.total_inventory > 0 AND c.total_inventory - c.total_sold <= 0 THEN 1
+            ELSE 0
+        END AS completed,
+        -- This part can be editted
+        CASE
+            WHEN c.discount_percentage - c.avg_discount_percentage <= 0 THEN 'طبیعی'
+            WHEN c.discount_percentage - c.avg_discount_percentage <= 10 THEN 'حمایت‌شده'
+            WHEN c.discount_percentage - c.avg_discount_percentage <= 25 THEN 'وابسته'
+            ELSE 'در_فشار'
+        END AS discount_quality
+        -- End
     FROM combined c
 ),
-
+-- This part can be editted
 tagged AS (
     SELECT
         m.*,
 
         CASE
-            WHEN m.age_in_months > 6 THEN 'DEAD_STOCK'
-
+            WHEN m.age_in_months > 6 AND m.completed = 1 THEN 'موجودی_مرده_کامل'
+            WHEN m.age_in_months > 6 AND m.completed = 0 THEN 'موجودی_مرده_مانده'
+            WHEN m.age_in_months <= 6 AND m.completed = 1 THEN 'زود_تمام_شده'
+            -- باز تر کردن متوسط نه صفر
             WHEN m.age_in_months >= 2
                  AND m.current_velocity = 0
                  AND m.prior_velocity = 0
-                 AND m.cumulative_sell_through < 50 THEN 'STALLED'
+                 AND m.cumulative_sell_through < 50 THEN 'متوقف_شده'
 
-            -- PLACEHOLDER THRESHOLDS: 1.30, 0.80, 10 — must be validated
+
             WHEN m.rstr IS NOT NULL AND m.rstr >= 1.30
                  AND m.cdr IS NOT NULL AND m.cdr >= 0.80
-                 AND m.dd <= 10 THEN 'STRONG'
+                 AND m.discount_quality IN ('طبیعی', 'حمایت‌شده') THEN 'قوی'
 
-            -- PLACEHOLDER THRESHOLD: 0.50
             WHEN m.velocity_gap IS NOT NULL AND m.velocity_gap < 0.50
-                 AND m.age_in_months >= 4 THEN 'RISK'
+                 AND m.age_in_months >= 4 THEN 'خطر'
 
-            -- PLACEHOLDER THRESHOLDS: 0.90, 1.0
             WHEN m.rstr IS NOT NULL AND m.rstr >= 0.90
-                 AND m.velocity_gap IS NOT NULL AND m.velocity_gap >= 1.0 THEN 'HEALTHY'
+                 AND m.velocity_gap IS NOT NULL AND m.velocity_gap >= 1.0 THEN 'سلامت'
 
-            -- PLACEHOLDER THRESHOLD: 0.90
             WHEN m.rstr IS NOT NULL AND m.rstr < 0.90
-                 AND m.age_in_months <= 5 THEN 'UNDERPERFORMING'
+                 AND m.age_in_months <= 5 THEN 'ضعیف'
 
-            ELSE 'UNDERPERFORMING'
+            ELSE 'na'
         END AS status_tag,
 
         CASE
-            WHEN m.age_in_months > 6 THEN 'DISCOUNT_CLEARANCE'
+            WHEN m.age_in_months > 6 AND m.completed = 1 THEN 'آرشیو'
+            WHEN m.age_in_months > 6 AND m.completed = 0 AND m.discount_quality = 'در_فشار' THEN 'حذف'
+            WHEN m.age_in_months > 6 AND m.completed = 0 THEN 'پایان_فصل'
+
+            WHEN m.age_in_months <= 6 AND m.completed = 1
+                 AND m.rstr >= 1.30
+                 AND m.cdr >= 0.80
+                 AND m.discount_quality IN ('طبیعی', 'وابسته') THEN 'خرید'
+
+            WHEN m.age_in_months <= 6 AND m.completed = 1 THEN 'تحقیق'
 
             WHEN m.age_in_months >= 2
                  AND m.current_velocity = 0
-                 AND m.prior_velocity = 0 THEN 'DISCOUNT_60'
+                 AND m.prior_velocity = 0 THEN 'تخفیف_50'
 
             WHEN m.rstr >= 1.30
                  AND m.cdr >= 0.80
-                 AND m.dd <= 10
+                 AND m.discount_quality IN ('طبیعی', 'وابسته')
                  AND m.velocity_gap IS NOT NULL
-                 AND m.velocity_gap >= 1.0 THEN 'REFILL'
+                 AND m.velocity_gap >= 1.0 THEN 'خرید'
 
             WHEN m.rstr >= 1.30
                  AND m.cdr >= 0.80
-                 AND m.dd <= 10 THEN 'MONITOR'
+                 AND m.discount_quality IN ('طبیعی', 'حمایت‌شده') THEN 'کنترل'
 
             WHEN m.velocity_gap IS NOT NULL AND m.velocity_gap < 0.50
-                 AND m.age_in_months >= 4 THEN 'DISCOUNT_50'
+                 AND m.age_in_months >= 4 THEN 'تخفیف_30'
 
             WHEN m.rstr >= 0.90
-                 AND m.velocity_gap >= 1.0 THEN 'MONITOR'
+                 AND m.velocity_gap >= 1.0 THEN 'کنترل'
 
-            WHEN m.rstr < 0.90 THEN 'DISCOUNT_30'
+            WHEN m.rstr < 0.90 THEN 'تخفیف_20'
 
-            ELSE 'MONITOR'
+            ELSE 'کنترل'
         END AS action
 
     FROM metrics m
-)
+),
+-- End
+action_rollup AS (
+    SELECT
+        a.product_code,
+        COUNT(*) AS action_count_total,
+        SUM(CASE WHEN a.measurement_status IN ('کامل_شده','داده_ناکافی')
+                 THEN 1 ELSE 0 END) AS action_count_measured
+    FROM salesoptimizer.actions a
+    GROUP BY a.product_code
+),
 
+last_completed AS (
+    SELECT
+        a.product_code,
+        a.action_type,
+        a.action_verdict,
+        a.action_lift,
+        a.action_margin_impact,
+        ROW_NUMBER() OVER (
+            PARTITION BY a.product_code
+            ORDER BY a.measurement_end_date DESC, a.id DESC
+        ) AS rn
+    FROM salesoptimizer.actions a
+    WHERE a.measurement_status = 'کامل_شده'
+),
+
+current_active AS (
+    SELECT
+        a.product_code,
+        a.action_type,
+        a.action_start_date,
+        a.action_end_date,
+        ROW_NUMBER() OVER (
+            PARTITION BY a.product_code
+            ORDER BY a.action_start_date DESC, a.id DESC
+        ) AS rn
+    FROM salesoptimizer.actions a
+    WHERE a.action_start_date <= CURDATE()
+      AND (a.action_end_date IS NULL OR a.action_end_date >= CURDATE())
+)
+-- this part can be edited
 SELECT
-    product_code,
-    category_code,
-    age_in_months,
-    age_in_days,
-    total_inventory,
-    total_sold_12_months,
-    remaining_inventory,
-    remaining_months,
-    cumulative_sell_through,
-    benchmark_cumulative_sell_through,
-    rstr,
-    cdr,
-    rvr,
-    vt,
-    discount_percentage,
-    avg_discount_percentage,
-    dd,
-    current_velocity,
-    required_future_velocity,
-    velocity_gap,
-    status_tag,
-    action
-FROM tagged;
+    t.*,
+    pc.category_name AS name,
+    -- Currently active action
+    ca.action_type            AS active_action,
+    ca.action_start_date      AS active_action_start_date,
+    ca.action_end_date        AS active_action_end_date,
+
+    -- Action history
+    COALESCE(ar.action_count_total,    0) AS action_count_total,
+    COALESCE(ar.action_count_measured, 0) AS action_count_measured,
+    lc.action_type            AS last_action,
+    lc.action_verdict         AS last_action_verdict,
+    lc.action_lift            AS last_action_lift,
+    lc.action_margin_impact   AS last_action_margin_impact,
+
+    -- Ladder state (case framework)
+    CASE
+        WHEN t.status_tag = 'موجودی_مرده_کامل'  THEN 2
+        WHEN t.status_tag = 'موجودی_مرده_مانده' THEN 3
+        ELSE 0
+    END AS actions_remaining,
+
+    -- Next recommended action
+    CASE
+        -- No actions allowed → nothing to recommend
+        WHEN t.status_tag NOT IN ('موجودی_مرده_کامل','موجودی_مرده_مانده')
+            THEN NULL
+
+        -- Already have an active action → don't recommend another
+        WHEN ca.action_type IS NOT NULL THEN NULL
+
+        -- No actions yet → recommend the baseline action from the analysis
+        WHEN COALESCE(ar.action_count_total, 0) = 0 THEN t.action
+
+        -- Last action was effective → repeat it
+        WHEN lc.action_verdict = 'موثر' THEN lc.action_type
+
+        -- Last action was ineffective → escalate
+        WHEN lc.action_verdict = 'فاقد_تاثیر' AND lc.action_type = 'تخفیف_20' THEN 'تخفیف_30'
+        WHEN lc.action_verdict = 'فاقد_تاثیر' AND lc.action_type = 'تخفیف_30' THEN 'تخفیف_50'
+        WHEN lc.action_verdict = 'فاقد_تاثیر' THEN 'حذف'
+
+        -- Ambiguous → try the analysis's own suggestion, unless we've already tried it
+        WHEN lc.action_verdict = 'مبهم' AND lc.action_type <> t.action THEN t.action
+        WHEN lc.action_verdict = 'مبهم' THEN 'کنترل'
+
+        -- Fallback
+        ELSE t.action
+    END AS next_recommended_action
+
+FROM tagged t
+-- End
+LEFT JOIN salesoptimizer.product_categories pc ON pc.category_code = t.category_code
+LEFT JOIN action_rollup   ar ON ar.product_code = t.product_code
+LEFT JOIN last_completed  lc ON lc.product_code = t.product_code AND lc.rn = 1
+LEFT JOIN current_active  ca ON ca.product_code = t.product_code AND ca.rn = 1;
+
+-- SELECT
+--     product_code,
+--     category_code,
+--     age_in_months,
+--     age_in_days,
+--     total_inventory,
+--     total_sold_12_months,
+--     remaining_inventory,
+--     remaining_months,
+--     cumulative_sell_through,
+--     benchmark_cumulative_sell_through,
+--     rstr,
+--     cdr,
+--     rvr,
+--     vt,
+--     discount_percentage,
+--     avg_discount_percentage,
+--     dd,
+--     discount_quality,
+--     current_velocity,
+--     required_future_velocity,
+--     velocity_gap,
+--     completed,
+--     status_tag,
+--     action
+-- FROM tagged;

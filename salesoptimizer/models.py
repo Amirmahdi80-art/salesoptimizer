@@ -1837,3 +1837,189 @@ class ProductSupplier(models.Model):
             f"product_code={self.product_code!r}, "
             f"supplier={self.supplier!r})>"
         )
+
+
+class Sqlchunk(models.Model):
+
+    CASE_VT = """\
+        CASE
+            WHEN c.age_in_months < 2 THEN 'داده_ناکافی'
+            WHEN c.current_velocity > c.prior_velocity * 1.10 THEN 'شتاب‌گیرنده'
+            WHEN c.current_velocity < c.prior_velocity * 0.90 THEN 'نزولی'
+            ELSE 'ثابت'
+        END AS vt,    
+    """
+
+    CASE_DISCOUNT_QUALITY = """\
+        (c.discount_percentage - c.avg_discount_percentage) AS dd,
+
+        CASE
+            WHEN c.remaining_months > 0
+            THEN c.remaining_inventory / c.remaining_months
+            ELSE NULL
+        END AS required_future_velocity,
+
+        CASE
+            WHEN c.remaining_months > 0 AND c.remaining_inventory > 0
+            THEN c.current_velocity / (c.remaining_inventory / c.remaining_months)
+            ELSE NULL
+        END AS velocity_gap,
+
+        CASE
+            WHEN c.total_inventory > 0 AND c.total_inventory - c.total_sold <= 0 THEN 1
+            ELSE 0
+        END AS completed,
+
+        CASE
+            WHEN c.discount_percentage - c.avg_discount_percentage <= 0 THEN 'طبیعی'
+            WHEN c.discount_percentage - c.avg_discount_percentage <= 10 THEN 'حمایت‌شده'
+            WHEN c.discount_percentage - c.avg_discount_percentage <= 25 THEN 'وابسته'
+            ELSE 'در_فشار'
+        END AS discount_quality
+        """
+
+    CASE_TAG = """\
+    tagged AS (
+        SELECT
+            m.*,
+
+            CASE
+                WHEN m.age_in_months > 6 AND m.completed = 1 THEN 'موجودی_مرده_کامل'
+                WHEN m.age_in_months > 6 AND m.completed = 0 THEN 'موجودی_مرده_مانده'
+                WHEN m.age_in_months <= 6 AND m.completed = 1 THEN 'زود_تمام_شده'
+
+                WHEN m.age_in_months >= 2
+                    AND m.current_velocity = 0
+                    AND m.prior_velocity = 0
+                    AND m.cumulative_sell_through < 50 THEN 'متوقف_شده'
+
+
+                WHEN m.rstr IS NOT NULL AND m.rstr >= 1.30
+                    AND m.cdr IS NOT NULL AND m.cdr >= 0.80
+                    AND m.discount_quality IN ('طبیعی', 'حمایت‌شده') THEN 'قوی'
+
+                WHEN m.velocity_gap IS NOT NULL AND m.velocity_gap < 0.50
+                    AND m.age_in_months >= 4 THEN 'خطر'
+
+                WHEN m.rstr IS NOT NULL AND m.rstr >= 0.90
+                    AND m.velocity_gap IS NOT NULL AND m.velocity_gap >= 1.0 THEN 'سلامت'
+
+                WHEN m.rstr IS NOT NULL AND m.rstr < 0.90
+                    AND m.age_in_months <= 5 THEN 'ضعیف'
+
+                ELSE 'na'
+            END AS status_tag,
+
+            CASE
+                WHEN m.age_in_months > 6 AND m.completed = 1 THEN 'آرشیو'
+                WHEN m.age_in_months > 6 AND m.completed = 0 AND m.discount_quality = 'در_فشار' THEN 'حذف'
+                WHEN m.age_in_months > 6 AND m.completed = 0 THEN 'پایان_فصل'
+
+                WHEN m.age_in_months <= 6 AND m.completed = 1
+                    AND m.rstr >= 1.30
+                    AND m.cdr >= 0.80
+                    AND m.discount_quality IN ('طبیعی', 'وابسته') THEN 'خرید'
+
+                WHEN m.age_in_months <= 6 AND m.completed = 1 THEN 'تحقیق'
+
+                WHEN m.age_in_months >= 2
+                    AND m.current_velocity = 0
+                    AND m.prior_velocity = 0 THEN 'تخفیف_50'
+
+                WHEN m.rstr >= 1.30
+                    AND m.cdr >= 0.80
+                    AND m.discount_quality IN ('طبیعی', 'وابسته')
+                    AND m.velocity_gap IS NOT NULL
+                    AND m.velocity_gap >= 1.0 THEN 'خرید'
+
+                WHEN m.rstr >= 1.30
+                    AND m.cdr >= 0.80
+                    AND m.discount_quality IN ('طبیعی', 'حمایت‌شده') THEN 'کنترل'
+
+                WHEN m.velocity_gap IS NOT NULL AND m.velocity_gap < 0.50
+                    AND m.age_in_months >= 4 THEN 'تخفیف_30'
+
+                WHEN m.rstr >= 0.90
+                    AND m.velocity_gap >= 1.0 THEN 'کنترل'
+
+                WHEN m.rstr < 0.90 THEN 'تخفیف_20'
+
+                ELSE 'کنترل'
+            END AS action
+
+        FROM metrics m
+    ),
+    """
+
+    CASE_ACTION = """\
+    SELECT
+        t.*,
+        pc.category_name AS name,
+        -- Currently active action
+        ca.action_type            AS active_action,
+        ca.action_start_date      AS active_action_start_date,
+        ca.action_end_date        AS active_action_end_date,
+
+        COALESCE(ar.action_count_total,    0) AS action_count_total,
+        COALESCE(ar.action_count_measured, 0) AS action_count_measured,
+        lc.action_type            AS last_action,
+        lc.action_verdict         AS last_action_verdict,
+        lc.action_lift            AS last_action_lift,
+        lc.action_margin_impact   AS last_action_margin_impact,
+
+        CASE
+            WHEN t.status_tag = 'موجودی_مرده_کامل'  THEN 2
+            WHEN t.status_tag = 'موجودی_مرده_مانده' THEN 3
+            ELSE 0
+        END AS actions_remaining,
+
+        CASE
+            -- No actions allowed → nothing to recommend
+            WHEN t.status_tag NOT IN ('موجودی_مرده_کامل','موجودی_مرده_مانده')
+                THEN NULL
+
+            WHEN ca.action_type IS NOT NULL THEN NULL
+
+            WHEN COALESCE(ar.action_count_total, 0) = 0 THEN t.action
+
+            WHEN lc.action_verdict = 'موثر' THEN lc.action_type
+
+            WHEN lc.action_verdict = 'فاقد_تاثیر' AND lc.action_type = 'تخفیف_20' THEN 'تخفیف_30'
+            WHEN lc.action_verdict = 'فاقد_تاثیر' AND lc.action_type = 'تخفیف_30' THEN 'تخفیف_50'
+            WHEN lc.action_verdict = 'فاقد_تاثیر' THEN 'حذف'
+
+            WHEN lc.action_verdict = 'مبهم' AND lc.action_type <> t.action THEN t.action
+            WHEN lc.action_verdict = 'مبهم' THEN 'کنترل'
+
+            ELSE t.action
+        END AS next_recommended_action
+
+    FROM tagged t
+    """
+
+
+    vt = models.TextField(
+        default=CASE_VT,
+        verbose_name="منطق شتاب",
+    )
+    discount_quality = models.TextField(
+        default=CASE_DISCOUNT_QUALITY,
+        verbose_name="منظق کیفیت تخفیف",
+    )
+    tag = models.TextField(
+        default=CASE_TAG,
+        verbose_name="منطق تگ",
+    )
+    action = models.TextField(
+        default=CASE_ACTION,
+        verbose_name="منطق اکشن‌ها",
+    )
+
+    class Meta:
+        db_table = "sql_chunk"
+        # managed = False
+        verbose_name = "ادیت اسکریپت آنالیز"
+        verbose_name_plural = "ادیت اسکریپت آنالیز"
+
+    def __str__(self):
+        return f"منطق آنالیز"

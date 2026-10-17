@@ -12,7 +12,7 @@ Run the following scripts one by one on a regular basis (cron jobs):
 4. soft_sql_three_point_five.sql
 5. soft_sql_four.sql
 6. soft_sql_five.sql
-7. analysis.sql
+7. run raw_analysis.sql or run_analysis.py
 8. best.py 
 run this: SET GLOBAL local_infile = 1; once on MySQL
 9. populate_product_voucher_fast.py

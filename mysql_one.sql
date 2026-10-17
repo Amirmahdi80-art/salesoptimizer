@@ -1,1 +1,0 @@
-CREATE INDEX idx_product_code ON salesoptimizer.first_show(product_code);

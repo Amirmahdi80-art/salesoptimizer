@@ -45,7 +45,7 @@ SQLSERVER_ENGINE = create_engine(
 
 MYSQL_ENGINE = create_engine(
     URL.create(
-        "mysql+pymysql",              # ← PyMySQL is much faster than mysql-connector
+        "mysql+pymysql",              
         username="root",
         password="Amir@13511348",
         host="localhost",
@@ -53,7 +53,7 @@ MYSQL_ENGINE = create_engine(
         database="salesoptimizer",
         query={
             "charset": "utf8mb4",
-            "local_infile": "1",       # needed for LOAD DATA LOCAL INFILE
+            "local_infile": "1",      
         },
     ),
     future=True,
