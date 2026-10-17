@@ -16,6 +16,6 @@ urlpatterns = [
     path("product/<str:product_code>/", product_detail_page, name="product-detail"),
 ]
 
-admin.site.site_header = "Product Cycle Analysis API"
+admin.site.site_header = "Product IQ Management System"
 admin.site.site_title = "API Source GUI"
 admin.site.index_title = "API Source GUI"

@@ -12,7 +12,7 @@ from django.conf import settings
 
 
 def get_chunk() -> Sqlchunk:
-    obj, _ = Sqlchunk.objects.get_or_create(pk=1)
+    obj, _ = Sqlchunk.objects.first()
     return obj
 
 
@@ -45,8 +45,8 @@ def run(sql_path: str = "analysis.sql") -> None:
     conn = pymysql.connect(
         host=db["HOST"],
         port=int(db.get("PORT") or 3306),
-        user=db["USER"],
-        password=db["PASSWORD"],
+        user=db["root"],
+        password=db["Amir@13511348"],
         database="salesoptimizer",
         charset="utf8mb4",
         autocommit=False,
