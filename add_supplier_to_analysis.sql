@@ -1,3 +1,6 @@
+ALTER TABLE salesoptimizer.analysis_grade_one
+    ADD COLUMN supplier VARCHAR(225) NULL AFTER all_time_sold;
+    
 UPDATE salesoptimizer.analysis_grade_one AS a
 LEFT JOIN (
     SELECT 

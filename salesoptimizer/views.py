@@ -84,7 +84,7 @@ class TwelveMonthAnalysisViewSet(ProductFilterMixin, viewsets.ReadOnlyModelViewS
 class TwelveMonthAnalysisStoreViewSet(
     ProductFilterMixin, viewsets.ReadOnlyModelViewSet
 ):
-    queryset = TwelveMonthAnalysisStore.objects.all()
+    queryset = TwelveMonthAnalysisStore.objects.all().order_by('age_in_days')
     serializer_class = TwelveMonthAnalysisStoreSerializer
     lookup_field = "id"
 
@@ -124,7 +124,7 @@ class AnalysisGradeOneViewSet(ProductFilterMixin, viewsets.ModelViewSet):
     GET /api/analysis-grade-one/{product_code}/        → retrieve one
     """
 
-    queryset = AnalysisGradeOne.objects.all()
+    queryset = AnalysisGradeOne.objects.all().order_by('age_in_days')
     serializer_class = AnalysisGradeOneSerializer
     lookup_field = "product_code"
     permission_classes = [IsAuthenticated]

@@ -39,4 +39,5 @@ CREATE TABLE salesoptimizer.actions (
     CONSTRAINT chk_actions_verdict
         CHECK (action_verdict IS NULL
                OR action_verdict IN ('موثر','فاقد تاثیر','مبهم'))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+COLLATE=utf8mb4_unicode_ci;

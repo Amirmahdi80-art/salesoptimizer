@@ -1,0 +1,57 @@
+2026-10-21 14:37:45,051 - INFO - ======================================================================
+2026-10-21 14:37:45,052 - INFO - ▶️  Fast CSV + LOAD DATA pipeline
+2026-10-21 14:37:45,053 - INFO -    Started: 2026-10-21 14:37:45
+2026-10-21 14:37:45,053 - INFO - ======================================================================
+2026-10-21 14:37:45,053 - INFO - 📥 Streaming SQL Server → CSV...
+2026-10-21 14:37:45,053 - INFO -    Target CSV: C:\projects\project-1.0.0\salesop\product_voucher.csv
+2026-10-21 14:37:47,659 - INFO -    Chunk 1: +50,000 rows (total: 50,000)
+2026-10-21 14:37:49,377 - INFO -    Chunk 2: +50,000 rows (total: 100,000)
+2026-10-21 14:37:51,734 - INFO -    Chunk 3: +50,000 rows (total: 150,000)
+2026-10-21 14:37:53,250 - INFO -    Chunk 4: +50,000 rows (total: 200,000)
+2026-10-21 14:37:54,368 - INFO -    Chunk 5: +50,000 rows (total: 250,000)
+2026-10-21 14:37:55,490 - INFO -    Chunk 6: +50,000 rows (total: 300,000)
+2026-10-21 14:37:57,130 - INFO -    Chunk 7: +50,000 rows (total: 350,000)
+2026-10-21 14:37:58,692 - INFO -    Chunk 8: +50,000 rows (total: 400,000)
+2026-10-21 14:38:00,075 - INFO -    Chunk 9: +50,000 rows (total: 450,000)
+2026-10-21 14:38:01,460 - INFO -    Chunk 10: +50,000 rows (total: 500,000)
+2026-10-21 14:38:02,807 - INFO -    Chunk 11: +50,000 rows (total: 550,000)
+2026-10-21 14:38:04,339 - INFO -    Chunk 12: +50,000 rows (total: 600,000)
+2026-10-21 14:38:05,576 - INFO -    Chunk 13: +50,000 rows (total: 650,000)
+2026-10-21 14:38:06,947 - INFO -    Chunk 14: +50,000 rows (total: 700,000)
+2026-10-21 14:38:08,440 - INFO -    Chunk 15: +50,000 rows (total: 750,000)
+2026-10-21 14:38:09,610 - INFO -    Chunk 16: +50,000 rows (total: 800,000)
+2026-10-21 14:38:10,738 - INFO -    Chunk 17: +50,000 rows (total: 850,000)
+2026-10-21 14:38:11,924 - INFO -    Chunk 18: +50,000 rows (total: 900,000)
+2026-10-21 14:38:13,154 - INFO -    Chunk 19: +50,000 rows (total: 950,000)
+2026-10-21 14:38:14,508 - INFO -    Chunk 20: +50,000 rows (total: 1,000,000)
+2026-10-21 14:38:16,094 - INFO -    Chunk 21: +50,000 rows (total: 1,050,000)
+2026-10-21 14:38:17,275 - INFO -    Chunk 22: +50,000 rows (total: 1,100,000)
+2026-10-21 14:38:18,620 - INFO -    Chunk 23: +50,000 rows (total: 1,150,000)
+2026-10-21 14:38:19,790 - INFO -    Chunk 24: +50,000 rows (total: 1,200,000)
+2026-10-21 14:38:20,911 - INFO -    Chunk 25: +50,000 rows (total: 1,250,000)
+2026-10-21 14:38:22,281 - INFO -    Chunk 26: +50,000 rows (total: 1,300,000)
+2026-10-21 14:38:23,629 - INFO -    Chunk 27: +50,000 rows (total: 1,350,000)
+2026-10-21 14:38:24,937 - INFO -    Chunk 28: +50,000 rows (total: 1,400,000)
+2026-10-21 14:38:26,433 - INFO -    Chunk 29: +50,000 rows (total: 1,450,000)
+2026-10-21 14:38:27,946 - INFO -    Chunk 30: +50,000 rows (total: 1,500,000)
+2026-10-21 14:38:29,335 - INFO -    Chunk 31: +50,000 rows (total: 1,550,000)
+2026-10-21 14:38:30,453 - INFO -    Chunk 32: +50,000 rows (total: 1,600,000)
+2026-10-21 14:38:31,217 - INFO -    Chunk 33: +33,466 rows (total: 1,633,466)
+2026-10-21 14:38:31,225 - INFO - ✅ CSV written: 1,633,466 rows → C:\projects\project-1.0.0\salesop\product_voucher.csv
+2026-10-21 14:38:31,242 - INFO - 📤 Loading CSV → MySQL via LOAD DATA LOCAL INFILE...
+2026-10-21 14:38:31,431 - INFO - 🧹 TRUNCATE product_voucher
+2026-10-21 14:38:34,190 - INFO - ✅ LOAD DATA affected 0 rows
+2026-10-21 14:38:34,192 - INFO - ✅ No warnings
+2026-10-21 14:38:34,193 - INFO - 🔍 Verifying...
+2026-10-21 14:38:34,205 - INFO - 📊 Total rows: 0
+2026-10-21 14:38:34,209 - INFO - 📊 By direction:
+Empty DataFrame
+Columns: [direction, cnt, total_qty]
+Index: []
+2026-10-21 14:38:34,210 - INFO - 📋 Latest 10 rows:
+Empty DataFrame
+Columns: [direction, inventory_voucher_id, spec_ref, voucher_no, voucher_date, source_store, dest_store, part_code, qty]
+Index: []
+2026-10-21 14:38:34,210 - INFO - ======================================================================
+2026-10-21 14:38:34,210 - INFO - ✅ Completed in 49.16s
+2026-10-21 14:38:34,210 - INFO - ======================================================================
